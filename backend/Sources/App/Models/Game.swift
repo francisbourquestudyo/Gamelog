@@ -9,8 +9,8 @@ import Foundation
 import Fluent
 import Vapor
 
-final class Game: Model {
-    static var schema = "games"
+final class Game: Model, Content {
+    static let schema = "games"
 
     // ----------------------------------------------------------------------------------------
     // MARK: Fields
@@ -58,5 +58,13 @@ final class Game: Model {
         self.rating = rating
         self.state = state
         self.$user.id = userID
+    }
+}
+
+extension Game {
+    struct Create: Content {
+        var title: String
+        var description: String
+        var platform: Platform
     }
 }

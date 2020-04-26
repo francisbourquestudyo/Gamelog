@@ -24,6 +24,9 @@ final class User: Model, Content {
     @Field(key: "password_hash")
     var passwordHash: String
 
+    @Children(for: \.$user)
+    var games: [Game]
+
     init() { }
 
     init(id: UUID? = nil, username: String, email: String, passwordHash: String) {
