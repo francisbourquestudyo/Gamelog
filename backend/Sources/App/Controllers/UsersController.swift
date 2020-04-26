@@ -17,9 +17,10 @@ final class UsersController: RouteCollection {
         // Password protected
         let passwordProtected = router.grouped(User.authenticator())
         passwordProtected.post("login", use: login(_:))
+        passwordProtected.get("logout", use: logout(_:))
     }
 
-    func signUp(_ req: Request) throws -> EventLoopFuture<User> {
+    func signUp(_ req: Request) throws -> EventLoopFuture<UserInfo> {
         try User.Create.validate(req)
         let create = try req.content.decode(User.Create.self)
         guard create.password == create.confirmPassword else {
@@ -30,8 +31,31 @@ final class UsersController: RouteCollection {
             email: create.email,
             passwordHash: Bcrypt.hash(create.password)
         )
-        return user.save(on: req.db)
-            .map { user }
+
+        let userSave = user.save(on: req.db).map{ user }
+        let tokenSave = userSave.flatMap { user -> EventLoopFuture<UserToken> in
+            let token: UserToken
+            do {
+                token = try user.generateToken()
+            } catch {
+                return req.eventLoop.makeFailedFuture(error)
+            }
+
+            return token.save(on: req.db).map { token }
+        }
+
+        return tokenSave.flatMap { token -> EventLoopFuture<UserInfo> in
+            do {
+                let userId = try user.requireID()
+                return req.eventLoop.makeSucceededFuture(UserInfo(
+                    id: userId,
+                    username: user.username,
+                    email: user.email,
+                    token: token.value))
+            } catch {
+                return req.eventLoop.makeFailedFuture(error)
+            }
+        }
     }
 
     func login(_ req: Request) throws -> EventLoopFuture<UserInfo> {
@@ -46,5 +70,10 @@ final class UsersController: RouteCollection {
                 email: user.email,
                 token: token.value)
         }
+    }
+
+    func logout(_ req: Request) throws -> HTTPResponseStatus {
+        req.auth.logout(User.self)
+        return HTTPResponseStatus.ok
     }
 }

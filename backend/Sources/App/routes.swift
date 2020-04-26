@@ -13,4 +13,6 @@ func routes(_ app: Application) throws {
     tokenProtected.get("me") { req -> User in
         try req.auth.require(User.self)
     }
+
+    try tokenProtected.register(collection: GamesController())
 }
