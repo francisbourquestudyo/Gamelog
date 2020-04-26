@@ -6,12 +6,11 @@ func routes(_ app: Application) throws {
         return "It works!"
     }
 
-    app.get("hello") { req -> String in
-        return "Hello, world!"
-    }
+    let apiRoutes = app.grouped("api")
+    try apiRoutes.register(collection: UsersController())
 
-    let todoController = TodoController()
-    app.get("todos", use: todoController.index)
-    app.post("todos", use: todoController.create)
-    app.delete("todos", ":todoID", use: todoController.delete)
+    let tokenProtected = apiRoutes.grouped(UserToken.authenticator())
+    tokenProtected.get("me") { req -> User in
+        try req.auth.require(User.self)
+    }
 }
