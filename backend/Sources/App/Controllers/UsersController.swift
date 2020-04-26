@@ -34,10 +34,17 @@ final class UsersController: RouteCollection {
             .map { user }
     }
 
-    func login(_ req: Request) throws -> EventLoopFuture<UserToken> {
+    func login(_ req: Request) throws -> EventLoopFuture<UserInfo> {
         let user = try req.auth.require(User.self)
+        let userId = try user.requireID()
         let token = try user.generateToken()
-        return token.save(on: req.db)
-            .map { token }
+        return token.save(on: req.db).map {
+            UserInfo(
+                id: userId,
+                username:
+                user.username,
+                email: user.email,
+                token: token.value)
+        }
     }
 }
